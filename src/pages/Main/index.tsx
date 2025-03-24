@@ -1,0 +1,78 @@
+import { useState } from "react";
+import { Container, Button } from "react-bootstrap";
+import { getAIResponse,postAIResponse } from "@/api";
+
+const Main = () => {
+  const labels = ["cafe", "gym", "restaurant"];
+  const [userInputs, setUserInputs] = useState<string[]>(
+    Array(labels.length).fill("")
+  );
+  const [response, setResponse] = useState<any>();
+
+  const handleInputChange = (index: number, value: string) => {
+    const updatedInputs = [...userInputs];
+    updatedInputs[index] = value;
+    setUserInputs(updatedInputs);
+  };
+
+  const handleSubmit = async (index: number) => {
+    const label = labels[index];
+    const value = userInputs[index];
+    const cleared = [...userInputs];
+    cleared[index] = "";
+    setUserInputs(cleared);
+    const prompt = `We're at a ${label}. I want to practice small talk in English. Here's what I want to say: "${value}". Please respond like a native speaker and correct me if it's unnatural.`;
+
+    try {
+      const data = await getAIResponse(prompt);
+      if(data.result){
+        setResponse(data.data);
+      }
+    } catch (err) {
+      // console.error("Parsing error or unexpected format:", err);
+      setResponse("Something went wrong.");
+    }
+  };
+
+  return (
+    <Container
+      fluid
+      className="d-flex flex-column justify-content-center align-items-center vh-100"
+      style={{ background: "linear-gradient(135deg, #000000, #434343)" }}
+    >
+      {labels.map((label, index) => (
+        <div key={label} className="mb-4">
+          <label htmlFor={label} className="m-2 font-semibold text-white">
+            {label}
+          </label>
+          <input
+            id={label}
+            type="text"
+            onChange={(e) => handleInputChange(index, e.target.value)}
+            value={userInputs[index]}
+            className="form-control"
+          />
+          <Button
+            variant="primary"
+            className="mt-2"
+            onClick={() => handleSubmit(index)}
+          >
+            Send
+          </Button>
+          <Button
+            variant="light"
+            className="mt-2"
+            onClick={postAIResponse}
+          >
+            quit
+          </Button>
+        </div>
+      ))}
+
+      <div className="font-semibold text-white mt-4">{response?.Response}</div>
+      <div className="font-semibold text-red mt-4">{response?.Error}</div>
+    </Container>
+  );
+};
+
+export default Main;
