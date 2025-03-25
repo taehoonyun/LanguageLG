@@ -21,7 +21,7 @@ const Main = () => {
     const cleared = [...userInputs];
     cleared[index] = "";
     setUserInputs(cleared);
-    const prompt = `We're at a ${label}. I want to practice small talk in English. Here's what I want to say: "${value}". Please respond like a native speaker and correct me if it's unnatural.`;
+    const prompt = `Tutor: Luna\nLocation: ${label}\nSentence: ${value}.`;
 
     try {
       const data = await getAIResponse(prompt);
@@ -70,7 +70,7 @@ const Main = () => {
       ))}
 
       <div className="font-semibold text-white mt-4">{response?.Response}</div>
-      <div className="font-semibold text-red mt-4">{response?.Error}</div>
+      <div className="font-semibold text-danger mt-4">{response?.Error}</div>
     </Container>
   );
 };
