@@ -59,7 +59,7 @@ export const loginId = async (userId: string) => {
 };
 export const getAIResponse  = async (messages: any) => {
   try {
-    const response = await client.post<SaveResponse>("/util/sendMessage", {
+    const response = await client.post<SaveResponse>("/chat/sendMessage", {
       params: {
         messages,
       },
@@ -71,7 +71,7 @@ export const getAIResponse  = async (messages: any) => {
 };
 export const postAIResponse  = async () => {
   try {
-    const response = await client.post<SaveResponse>("/util/resetHistory", {
+    const response = await client.post<SaveResponse>("/chat/resetHistory", {
     });
     return response.data ?? [];
   } catch (err: any) {
