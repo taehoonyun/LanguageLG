@@ -1,24 +1,18 @@
 import React, { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { Container, Card, Form, Button } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
-import {loginId} from "@/api";
+import { useAuth } from "@/hooks/useAuth";
+import { styles } from "./styles";
+
+interface LoginForm {
+  username: string;
+}
 
 const Login: React.FC = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const navigate = useNavigate();
+  const { login, isLoading, error: authError } = useAuth();
 
-  // Handle form submission
-  const onSubmit = async (data: any) => {
-    const response = await loginId(data.username);
-    if(response?.result){
-      localStorage.setItem("userId",response?.data?.userId)
-      navigate('/');
-    }
-  };
-
-  // Breakout-style animation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -68,6 +62,10 @@ const Login: React.FC = () => {
     });
   }, []);
 
+  const onSubmit = async (data: LoginForm) => {
+    await login(data.username);
+  };
+
   return (
     <div className="position-relative vh-100 d-flex justify-content-center align-items-center">
       {/* Animated Background */}
@@ -89,9 +87,24 @@ const Login: React.FC = () => {
                   {...register("username", { required: "Username is required" })}
                   className="custom-input"
                 />
+                {errors.username && (
+                  <Form.Text className="text-danger">
+                    {errors.username.message}
+                  </Form.Text>
+                )}
               </Form.Group>
-              <Button variant="primary" type="submit" className="w-100 custom-button">
-                Login
+              {authError && (
+                <div className="text-danger mb-3">
+                  {authError}
+                </div>
+              )}
+              <Button 
+                variant="primary" 
+                type="submit" 
+                className="w-100 custom-button"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Logging in...' : 'Login'}
               </Button>
             </Form>
           </Card.Body>
@@ -128,16 +141,6 @@ const Login: React.FC = () => {
       </style>
     </div>
   );
-};
-
-// Styles
-const styles: { card: React.CSSProperties } = {
-  card: {
-    maxWidth: "400px",
-    backdropFilter: "blur(12px)",
-    background: "rgba(255, 255, 255, 0.15)",
-    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
-  },
 };
 
 export default Login;

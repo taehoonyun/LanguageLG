@@ -5,21 +5,28 @@
 //     exp: null,
 //     role: "History,Dashboard",
 // });
-const sendJSON = (res, status, content) => {
-    try {
-        res.status(status);
-        res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Cache-Control', 'no-cache');
-        res.json(content);
-    } catch (e) {}
+const sendJSON = (res, statusCode, data) => {
+  res.status(statusCode).json({
+    result: true,
+    data,
+    timestamp: new Date().toISOString()
+  });
 };
 
 const sendJSONMessage = (res, status, pMsg) => {
     sendJSON(res, status, { msg: pMsg });
 };
 
-const sendJSONError = (res, status, pErr) => {
-    sendJSON(res, status, { err: pErr });
+const sendJSONError = (res, statusCode, message) => {
+  res.status(statusCode).json({
+    result: false,
+    error: message,
+    timestamp: new Date().toISOString()
+  });
 };
 
-module.exports = { sendJSON, sendJSONMessage, sendJSONError };
+module.exports = {
+  sendJSON,
+  sendJSONMessage,
+  sendJSONError
+};

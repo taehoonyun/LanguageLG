@@ -1,81 +1,63 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Container, Button } from "react-bootstrap";
-import { getAIResponse, postAIResponse, getCharacterNames } from "@/api";
+import { LocationInput } from "@/components/LocationInput";
+import { useChat } from "@/hooks/useChat";
+import { useAuth } from "@/hooks/useAuth";
+import { LOCATIONS } from "@/constants/locations";
+import { styles } from "./styles";
+
 const Main = () => {
-  const labels = ["cafe", "gym", "restaurant"];
-  const [userInputs, setUserInputs] = useState<string[]>(
-    Array(labels.length).fill("")
-  );
-  const [nameList, setNameList] = useState<string[]>([""]);
-  const [response, setResponse] = useState<any>();
+  const [inputs, setInputs] = useState<Record<string, string>>({});
+  const { response, isLoading, error, sendMessage } = useChat();
+  const { logout } = useAuth();
 
-  useEffect(() => {
-    const loadNames = async () => {
-      const names = await getCharacterNames();
-      setNameList(names.data);
-    };
-
-    loadNames();
-  }, []);
-
-  const handleInputChange = (index: number, value: string) => {
-    const updatedInputs = [...userInputs];
-    updatedInputs[index] = value;
-    setUserInputs(updatedInputs);
+  const handleInputChange = (location: string, value: string) => {
+    setInputs((prev) => ({ ...prev, [location]: value }));
   };
 
-  const handleSubmit = async (index: number) => {
-    const label = labels[index];
-    const value = userInputs[index];
-    const cleared = [...userInputs];
-    cleared[index] = "";
-    setUserInputs(cleared);
-    const prompt = `Tutor: Luna\nLocation: ${label}\nSentence: ${value}.`;
+  const handleSubmit = async (location: string) => {
+    const value = inputs[location];
+    if (!value) return;
 
-    try {
-      const data = await getAIResponse(prompt);
-      if (data.result) {
-        setResponse(data.data);
-      }
-    } catch (err) {
-      // console.error("Parsing error or unexpected format:", err);
-      setResponse("Something went wrong.");
-    }
+    const prompt = `Location: ${location}\nValue: ${value}`;
+    await sendMessage(prompt);
+    setInputs((prev) => ({ ...prev, [location]: "" }));
   };
 
   return (
-    <Container
-      fluid
-      className="d-flex flex-column justify-content-center align-items-center vh-100"
-      style={{ background: "linear-gradient(135deg, #000000, #434343)" }}
-    >
-      {labels.map((label, index) => (
-        <div key={label} className="mb-4">
-          <label htmlFor={label} className="m-2 font-semibold text-white">
-            {label}
-          </label>
-          <input
-            id={label}
-            type="text"
-            onChange={(e) => handleInputChange(index, e.target.value)}
-            value={userInputs[index]}
-            className="form-control"
-          />
-          <Button
-            variant="primary"
-            className="mt-2"
-            onClick={() => handleSubmit(index)}
-          >
-            Send
-          </Button>
-          <Button variant="light" className="mt-2" onClick={postAIResponse}>
-            quit
-          </Button>
+    <Container className="py-5">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h1 className="text-white">Location Generator</h1>
+        <Button variant="outline-light" onClick={logout}>
+          Logout
+        </Button>
+      </div>
+      <div className="row g-4">
+        {LOCATIONS.map((location) => (
+          <div key={location} className="col-md-6">
+            <LocationInput
+              location={location}
+              value={inputs[location] || ""}
+              onChange={(value) => handleInputChange(location, value)}
+              onSubmit={() => handleSubmit(location)}
+              isLoading={isLoading}
+            />
+          </div>
+        ))}
+      </div>
+      {response && (
+        <div className="mt-4">
+          <h3 className="text-white mb-3">Response:</h3>
+          <div className="bg-dark text-white p-4 rounded" style={styles.response}>
+            {response}
+          </div>
         </div>
-      ))}
-
-      <div className="font-semibold text-white mt-4">{response?.Response}</div>
-      <div className="font-semibold text-danger mt-4">{response?.Error}</div>
+      )}
+      {error && (
+        <div className="mt-4">
+          <div className="font-semibold text-white mt-4">{error}</div>
+        </div>
+      )}
     </Container>
   );
 };
