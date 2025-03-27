@@ -8,6 +8,8 @@ const app = express();
 const port = process.env.PORT || 5000;
 const api = require('./routes/api');
 const server = http.createServer(app);
+const connectDB = require("./database/mongoDB");
+connectDB();
 const io = socketIo(server, {
   cors: {
     origin: "*",  // Allow all clients to connect
