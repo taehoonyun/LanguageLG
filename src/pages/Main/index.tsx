@@ -1,13 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Container, Button } from "react-bootstrap";
-import { getAIResponse,postAIResponse } from "@/api";
-
+import { getAIResponse, postAIResponse, getCharacterNames } from "@/api";
 const Main = () => {
   const labels = ["cafe", "gym", "restaurant"];
   const [userInputs, setUserInputs] = useState<string[]>(
     Array(labels.length).fill("")
   );
+  const [nameList, setNameList] = useState<string[]>([""]);
   const [response, setResponse] = useState<any>();
+
+  useEffect(() => {
+    const loadNames = async () => {
+      const names = await getCharacterNames();
+      setNameList(names.data);
+    };
+
+    loadNames();
+  }, []);
 
   const handleInputChange = (index: number, value: string) => {
     const updatedInputs = [...userInputs];
@@ -25,7 +34,7 @@ const Main = () => {
 
     try {
       const data = await getAIResponse(prompt);
-      if(data.result){
+      if (data.result) {
         setResponse(data.data);
       }
     } catch (err) {
@@ -59,11 +68,7 @@ const Main = () => {
           >
             Send
           </Button>
-          <Button
-            variant="light"
-            className="mt-2"
-            onClick={postAIResponse}
-          >
+          <Button variant="light" className="mt-2" onClick={postAIResponse}>
             quit
           </Button>
         </div>

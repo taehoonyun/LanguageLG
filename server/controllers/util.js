@@ -1,16 +1,11 @@
 const mRes = require("../module/commonResponse");
 const { callDeepseekAPI } = require("../module/deepseek");
 const { callOpenAIAPI } = require("../module/chatGPT");
-
+const Character = require("../models/character");
 let messageHistory = [
   {
     role: "system",
     content: `You are a native English speaker from the U.S. helping a user practice English through casual roleplay based on locations (e.g., cafe, gym, restaurant).
-
-There are 3 fictional tutors available:
-- Alice: cheerful and friendly, uses simple language
-- James: grammar-focused and formal, corrects precisely
-- Luna: creative and metaphorical, encourages expressive English
 
 The user will specify which tutor to talk to by saying:
 "Tutor: <name>"
@@ -42,8 +37,8 @@ exports.sendMessage = async (req, res) => {
       data: JSON.parse(assistantMessage),
     });
   } catch (error) {
-    console.error("Error calling Deepseek:", error.message);
-    res.status(500).json({ error: "Failed to call Deepseek API" });
+    console.error("Error calling ChatGPT:", error.message);
+    res.status(500).json({ error: "Failed to call ChatGPT API" });
   }
 };
 
@@ -53,4 +48,20 @@ exports.resetHistory = (req, res) => {
     result: true,
     data: "Chat history reset.",
   });
+};
+// GET only the names of the characters from CharacterInfo collection
+exports.getCharacterNames = async (req, res) => {
+  try {
+    const characters = await Character.find().select("name -_id"); // Only name field
+    console.log(characters);
+    
+    const names = characters.map(c => c.name);
+    mRes.sendJSON(res, 200, {
+      result: true,
+      data: names,
+    });
+  } catch (err) {
+    console.error("Error fetching character names:", err.message);
+    mRes.sendJSONError(res, 500, "Failed to get character names");
+  }
 };

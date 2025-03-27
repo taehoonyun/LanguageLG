@@ -78,3 +78,12 @@ export const postAIResponse  = async () => {
     throw new Error(err.response?.data?.err ?? err.message);
   }
 };
+export const getCharacterNames  = async () => {
+  try {
+    const response = await client.get<SaveResponse>("/util/getCharacterNames", {
+    });
+    return response.data ?? [];
+  } catch (err: any) {
+    throw new Error(err.response?.data?.err ?? err.message);
+  }
+};

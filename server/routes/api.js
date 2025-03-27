@@ -8,6 +8,6 @@ router.get("/auth/login", ctrlGame.game);
 router.post('/auth/login', ctrlAuth.login);
 router.post('/util/sendMessage', ctrlUtil.sendMessage);
 router.post('/util/resetHistory', ctrlUtil.resetHistory);
-
+router.get("/util/getCharacterNames", ctrlUtil.getCharacterNames);
 
 module.exports = router;
