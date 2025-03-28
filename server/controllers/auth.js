@@ -2,7 +2,7 @@ const mRes = require("../module/commonResponse");
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require("../utils/jwt");
 
 const validateLoginRequest = (req) => {
-  if (!req.body?.params?.userId) {
+  if (!req.body?.username) {
     throw new Error("Username is required!");
   }
   return req.body.username;
@@ -40,13 +40,7 @@ const handleLoginError = (res, error) => {
 
 module.exports.login = async (req, res) => {
   try {
-    console.log("Login request received:", {
-      method: req.method,
-      path: req.path,
-      body: req.body,
-      headers: req.headers
-    });
-    
+
     const username = validateLoginRequest(req);
     handleLoginSuccess(res, username);
   } catch (error) {

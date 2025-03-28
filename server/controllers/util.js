@@ -9,7 +9,9 @@ exports.getCharacterNames = async (req, res) => {
       .collection("CharacterInfo")
       .find({}, { projection: { name: 1, _id: 0 } })
       .toArray();
-
+    if (characters.length < 0) {
+      return;
+    }
     const names = characters.map((c) => c.name);
 
     mRes.sendJSON(res, 200, names);

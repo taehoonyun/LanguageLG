@@ -79,7 +79,6 @@ const Main = () => {
 
   const handleReset = async () => {
     try {
-      await resetHistory();
       setMessage("");
     } catch (error) {
       setToastMessage("Failed to reset chat. Please try again.");
@@ -89,24 +88,11 @@ const Main = () => {
 
   const handleCharacterSelect = async (character: Character) => {
     try {
-      const { result, data: characterDetails } = await aiService.getCharacterByName(character.name);
-      
-      if (!result || !characterDetails) {
-        setToastMessage("Failed to fetch character details");
-        setShowToast(true);
-        return;
-      }
-
-      setSelectedCharacter({
-        ...character,
-        personality: characterDetails.personality,
-        promptPrefix: characterDetails.promptPrefix
-      });
-
       // Start a new conversation with the selected character
       await talkToFriend(character.name, []);
-      await resetHistory();
     } catch (error) {
+      console.log(error);
+      
       setToastMessage("Failed to select character. Please try again.");
       setShowToast(true);
     }

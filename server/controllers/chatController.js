@@ -25,30 +25,28 @@ ALWAYS respond strictly in this JSON format:
 };
 
 exports.sendMessage = async (req, res) => {
-  const { userId, messages } = req.body;
+  const { userId, message } = req.body;
 
-  if (!messages) {
+  if (!message) {
     return mRes.sendJSONError(
       res,
       400,
-      "No active conversation found. Please select a character first."
+      "Message is required"
     );
   }
 
   // Get the active conversation for this user
   const conversation = activeConversations.get(userId);
   if (!conversation) {
-    return mRes.sendJSONError(res, 400, "message is required");
+    return mRes.sendJSONError(res, 400, "No active conversation found. Please select a character first.");
   }
 
   const {
-    personality,
     messageHistory: userMessageHistory,
-    friendId,
   } = conversation;
 
   // Add the new message to the history
-  userMessageHistory.push({ role: "user", content: messages });
+  userMessageHistory.push({ role: "user", content: message });
 
   try {
     const assistantMessage = await callOpenAIAPI(userMessageHistory);
@@ -126,8 +124,8 @@ exports.quitChat = async (req, res) => {
 
 exports.talkToFriend = async (req, res) => {
   const { userId, friendId, messages } = req.body;
+  
   const personality = getCharacterByName(friendId); // Get directly from cache
-
   if (!personality) {
     return mRes.sendJSONError(res, 400, "Invalid friend name");
   }
@@ -158,8 +156,12 @@ exports.talkToFriend = async (req, res) => {
       friendId,
       messageHistory: initialMessageHistory,
     });
+    
+    mRes.sendJSON(res, 200, {
+      result: true,
+      responseText,
+    });
 
-    res.json({ reply: responseText });
   } catch (error) {
     console.error("Error in talkToFriend:", error.message);
     mRes.sendJSONError(res, 500, "Failed to start conversation");

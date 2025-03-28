@@ -41,7 +41,7 @@ export const aiService = {
 
   sendMessage: async ({ message, userId }: SendMessageParams): Promise<ApiResponse<ChatResponse>> => {
     const response = await apiClient.post<ApiResponse<ChatResponse>>(API_ENDPOINTS.CHAT.SEND_MESSAGE, {
-      messages: message,
+      message,
       userId,
     });
     return response.data;
