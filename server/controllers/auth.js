@@ -5,37 +5,52 @@ const validateLoginRequest = (req) => {
   if (!req.body?.params?.userId) {
     throw new Error("Username is required!");
   }
-  return req.body.params.userId;
+  return req.body.username;
 };
 
-const handleLoginSuccess = (res, userId) => {
-  const accessToken = generateAccessToken(userId);
-  const refreshToken = generateRefreshToken(userId);
+const handleLoginSuccess = (res, username) => {
+  const accessToken = generateAccessToken(username);
+  const refreshToken = generateRefreshToken(username);
   
   // Set refresh token in HTTP-only cookie
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'development',
     sameSite: 'strict',
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
   });
 
-  mRes.sendJSON(res, 200, {
-    userId,
-    accessToken,
-    message: "Login successful"
-  });
+  const response = {
+    result: true,
+    token: accessToken,
+    user: {
+      id: username,
+      username: username
+    },
+    message: "Login successful",
+    timestamp: new Date().toISOString()
+  };
+  mRes.sendJSON(res, 200, response);
 };
 
 const handleLoginError = (res, error) => {
+  console.error("Login error:", error);
   mRes.sendJSONError(res, 400, error.message);
 };
 
 module.exports.login = async (req, res) => {
   try {
-    const userId = validateLoginRequest(req);
-    handleLoginSuccess(res, userId);
+    console.log("Login request received:", {
+      method: req.method,
+      path: req.path,
+      body: req.body,
+      headers: req.headers
+    });
+    
+    const username = validateLoginRequest(req);
+    handleLoginSuccess(res, username);
   } catch (error) {
+    console.error("Login process failed:", error);
     handleLoginError(res, error);
   }
 };
@@ -48,10 +63,10 @@ const handleRefreshToken = async (req, res) => {
     }
 
     const decoded = verifyRefreshToken(refreshToken);
-    const newAccessToken = generateAccessToken(decoded.userId);
+    const newAccessToken = generateAccessToken(decoded.username);
     
     mRes.sendJSON(res, 200, {
-      accessToken: newAccessToken,
+      token: newAccessToken,
       message: "Token refreshed successfully"
     });
   } catch (error) {
@@ -60,16 +75,8 @@ const handleRefreshToken = async (req, res) => {
 };
 
 const handleLogoutSuccess = (res) => {
-  // Clear refresh token cookie
-  res.clearCookie('refreshToken', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict'
-  });
-
-  mRes.sendJSON(res, 200, {
-    message: "Logout successful"
-  });
+  res.clearCookie('refreshToken');
+  mRes.sendJSON(res, 200, { message: "Logout successful" });
 };
 
 const handleLogoutError = (res, error) => {

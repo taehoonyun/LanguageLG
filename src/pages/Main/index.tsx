@@ -1,63 +1,258 @@
-import { useState } from "react";
-import { Container, Button } from "react-bootstrap";
-import { LocationInput } from "@/components/LocationInput";
+import { useState, useEffect } from "react";
+import { Container, Button, Form, Card, Toast } from "react-bootstrap";
 import { useChat } from "@/hooks/useChat";
 import { useAuth } from "@/hooks/useAuth";
-import { LOCATIONS } from "@/constants/locations";
+import { aiService } from "@/services/ai";
 import { styles } from "./styles";
 
+interface Character {
+  name: string;
+  description: string;
+  personality?: string;
+  promptPrefix?: string;
+}
+
+interface ChatResponse {
+  response?: string;
+  error?: string;
+}
+
 const Main = () => {
-  const [inputs, setInputs] = useState<Record<string, string>>({});
-  const { response, isLoading, error, sendMessage } = useChat();
-  const { logout } = useAuth();
+  const [message, setMessage] = useState("");
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+  const [isLoadingCharacters, setIsLoadingCharacters] = useState(true);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const { logout, token, user } = useAuth();
+  const { response, isLoading, error, sendMessage, resetHistory, talkToFriend, quitChat } = useChat(user?.id || '');
 
-  const handleInputChange = (location: string, value: string) => {
-    setInputs((prev) => ({ ...prev, [location]: value }));
+  useEffect(() => {
+    const fetchCharacters = async () => {
+      if (!token) {
+        setIsLoadingCharacters(false);
+        return;
+      }
+      
+      try {
+        const { result, data: names } = await aiService.getCharacterNames();
+        
+        if (!result || !names) {
+          setToastMessage("Failed to fetch characters");
+          setShowToast(true);
+          return;
+        }
+
+        const characterList = names.map((name: string) => ({
+          name,
+          description: `Chat with ${name}`
+        }));
+        
+        setCharacters(characterList);
+        if (characterList.length > 0) {
+          const randomIndex = Math.floor(Math.random() * characterList.length);
+          setSelectedCharacter(characterList[randomIndex]);
+        }
+      } catch (error) {
+        setToastMessage("Failed to fetch characters. Please try again.");
+        setShowToast(true);
+      } finally {
+        setIsLoadingCharacters(false);
+      }
+    };
+
+    fetchCharacters();
+  }, [token]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim() || !selectedCharacter) return;
+
+    try {
+      await sendMessage(message);
+      setMessage("");
+    } catch (error) {
+      setToastMessage("Failed to send message. Please try again.");
+      setShowToast(true);
+    }
   };
 
-  const handleSubmit = async (location: string) => {
-    const value = inputs[location];
-    if (!value) return;
-
-    const prompt = `Location: ${location}\nValue: ${value}`;
-    await sendMessage(prompt);
-    setInputs((prev) => ({ ...prev, [location]: "" }));
+  const handleReset = async () => {
+    try {
+      await resetHistory();
+      setMessage("");
+    } catch (error) {
+      setToastMessage("Failed to reset chat. Please try again.");
+      setShowToast(true);
+    }
   };
+
+  const handleCharacterSelect = async (character: Character) => {
+    try {
+      const { result, data: characterDetails } = await aiService.getCharacterByName(character.name);
+      
+      if (!result || !characterDetails) {
+        setToastMessage("Failed to fetch character details");
+        setShowToast(true);
+        return;
+      }
+
+      setSelectedCharacter({
+        ...character,
+        personality: characterDetails.personality,
+        promptPrefix: characterDetails.promptPrefix
+      });
+
+      // Start a new conversation with the selected character
+      await talkToFriend(character.name, []);
+      await resetHistory();
+    } catch (error) {
+      setToastMessage("Failed to select character. Please try again.");
+      setShowToast(true);
+    }
+  };
+
+  const handleQuit = async () => {
+    if (!selectedCharacter) return;
+    
+    try {
+      await quitChat();
+      setSelectedCharacter(null);
+      setMessage("");
+      setToastMessage("Chat ended successfully");
+      setShowToast(true);
+    } catch (error) {
+      setToastMessage("Failed to end chat. Please try again.");
+      setShowToast(true);
+    }
+  };
+
+  if (isLoadingCharacters) {
+    return (
+      <Container className="py-5" style={styles.container}>
+        <div className="text-center text-white">
+          <h2>Loading characters...</h2>
+        </div>
+      </Container>
+    );
+  }
 
   return (
-    <Container className="py-5">
+    <Container className="py-5" style={styles.container}>
+      <Toast 
+        show={showToast} 
+        onClose={() => setShowToast(false)} 
+        delay={3000} 
+        autohide
+        className="position-fixed top-0 end-0 m-3"
+      >
+        <Toast.Header>
+          <strong className="me-auto">Notification</strong>
+        </Toast.Header>
+        <Toast.Body>{toastMessage}</Toast.Body>
+      </Toast>
+
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="text-white">Location Generator</h1>
-        <Button variant="outline-light" onClick={logout}>
-          Logout
-        </Button>
+        <h1 className="text-white">Character Chat</h1>
+        <div>
+          {selectedCharacter && (
+            <Button 
+              variant="outline-danger" 
+              onClick={handleQuit} 
+              className="me-2"
+              style={styles.button}
+            >
+              Quit Chat
+            </Button>
+          )}
+          <Button 
+            variant="outline-light" 
+            onClick={handleReset} 
+            className="me-2"
+            style={styles.button}
+          >
+            Reset Chat
+          </Button>
+          <Button 
+            variant="outline-light" 
+            onClick={logout}
+            style={styles.button}
+          >
+            Logout
+          </Button>
+        </div>
       </div>
-      <div className="row g-4">
-        {LOCATIONS.map((location) => (
-          <div key={location} className="col-md-6">
-            <LocationInput
-              location={location}
-              value={inputs[location] || ""}
-              onChange={(value) => handleInputChange(location, value)}
-              onSubmit={() => handleSubmit(location)}
-              isLoading={isLoading}
-            />
-          </div>
-        ))}
-      </div>
-      {response && (
-        <div className="mt-4">
-          <h3 className="text-white mb-3">Response:</h3>
-          <div className="bg-dark text-white p-4 rounded" style={styles.response}>
-            {response}
+
+      <div className="d-flex flex-column align-items-center">
+        <div className="w-100 mb-4">
+          <h3 className="text-white mb-3">Select a Character</h3>
+          <div className="d-flex gap-3 overflow-auto pb-3 custom-scrollbar" style={styles.characterList}>
+            {characters.map((character) => (
+              <Card
+                key={character.name}
+                className={`flex-shrink-0 ${selectedCharacter?.name === character.name ? 'border-light' : ''}`}
+                style={styles.characterCard}
+                onClick={() => handleCharacterSelect(character)}
+              >
+                <Card.Body className="p-2">
+                  <Card.Title className="text-center mb-0 text-white">
+                    {character.name}
+                  </Card.Title>
+                </Card.Body>
+              </Card>
+            ))}
           </div>
         </div>
-      )}
-      {error && (
-        <div className="mt-4">
-          <div className="font-semibold text-white mt-4">{error}</div>
+
+        {selectedCharacter && (
+          <div className="text-center mb-4 p-4 rounded bg-dark bg-opacity-25 border border-light">
+            <h2 className="text-white">{selectedCharacter.name}</h2>
+            <p className="text-white-50 mb-0">
+              {selectedCharacter.description}
+            </p>
+          </div>
+        )}
+
+        <div className="w-100 mb-4 p-3 rounded bg-dark bg-opacity-25 border border-light overflow-auto custom-scrollbar" 
+             style={{ minHeight: "300px", maxHeight: "500px" }}>
+          {response?.Response && (
+            <div className="d-flex mb-3">
+              <div className="bg-dark bg-opacity-25 text-white p-3 rounded-3" style={{ maxWidth: "80%" }}>
+                {response.Response}
+              </div>
+            </div>
+          )}
+          {response?.Error && (
+            <div className="d-flex mb-3 justify-content-end">
+              <div className="bg-danger bg-opacity-10 text-danger p-3 rounded-3" style={{ maxWidth: "80%" }}>
+                {response.Error}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        <div className="w-100 p-3 rounded bg-dark bg-opacity-25 border border-light">
+          <Form onSubmit={handleSubmit}>
+            <Form.Group className="d-flex gap-2">
+              <Form.Control
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder={selectedCharacter ? `Chat with ${selectedCharacter.name}...` : "Select a character to start chatting"}
+                disabled={isLoading || !selectedCharacter}
+                className="bg-dark bg-opacity-25 text-white border-light"
+              />
+              <Button 
+                type="submit" 
+                variant="outline-light"
+                disabled={isLoading || !message.trim() || !selectedCharacter}
+              >
+                {isLoading ? "Sending..." : "Send"}
+              </Button>
+            </Form.Group>
+          </Form>
+        </div>
+      </div>
     </Container>
   );
 };

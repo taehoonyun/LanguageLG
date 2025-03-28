@@ -1,52 +1,38 @@
 const jwt = require('jsonwebtoken');
-const jwtConfig = require('../config/jwt');
 
-const generateAccessToken = (userId) => {
-  return jwt.sign(
-    { userId },
-    jwtConfig.secret,
-    {
-      expiresIn: jwtConfig.expiresIn,
-      algorithm: jwtConfig.algorithm,
-      issuer: jwtConfig.issuer,
-      audience: jwtConfig.audience
-    }
-  );
+const ACCESS_TOKEN_SECRET = process.env.JWT_SECRET || 'your-access-token-secret';
+const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-token-secret';
+
+const generateAccessToken = (username) => {
+  console.log("Generating access token for:", username);
+  const token = jwt.sign({ username }, ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+  console.log("Generated token:", token);
+  return token;
 };
 
-const generateRefreshToken = (userId) => {
-  return jwt.sign(
-    { userId },
-    jwtConfig.refreshSecret,
-    {
-      expiresIn: jwtConfig.refreshExpiresIn,
-      algorithm: jwtConfig.algorithm,
-      issuer: jwtConfig.issuer,
-      audience: jwtConfig.audience
-    }
-  );
+const generateRefreshToken = (username) => {
+  console.log("Generating refresh token for:", username);
+  return jwt.sign({ username }, REFRESH_TOKEN_SECRET, { expiresIn: '7d' });
 };
 
 const verifyAccessToken = (token) => {
   try {
-    return jwt.verify(token, jwtConfig.secret, {
-      algorithms: [jwtConfig.algorithm],
-      issuer: jwtConfig.issuer,
-      audience: jwtConfig.audience
-    });
+    const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET);
+    return decoded;
   } catch (error) {
+    console.error("Token verification failed:", error);
     throw new Error('Invalid access token');
   }
 };
 
 const verifyRefreshToken = (token) => {
   try {
-    return jwt.verify(token, jwtConfig.refreshSecret, {
-      algorithms: [jwtConfig.algorithm],
-      issuer: jwtConfig.issuer,
-      audience: jwtConfig.audience
-    });
+    console.log("Verifying refresh token:", token);
+    const decoded = jwt.verify(token, REFRESH_TOKEN_SECRET);
+    console.log("Decoded refresh token:", decoded);
+    return decoded;
   } catch (error) {
+    console.error("Refresh token verification failed:", error);
     throw new Error('Invalid refresh token');
   }
 };

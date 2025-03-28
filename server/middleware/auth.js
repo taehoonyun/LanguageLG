@@ -11,7 +11,9 @@ const validateToken = (req) => {
   const decoded = verifyAccessToken(token);
   
   // Add user info to request
-  req.user = decoded;
+  req.user = {
+    username: decoded.username
+  };
   return true;
 };
 
@@ -20,6 +22,7 @@ const authMiddleware = (req, res, next) => {
     validateToken(req);
     next();
   } catch (error) {
+    console.error("Auth middleware error:", error);
     if (error.message === 'Invalid access token') {
       mRes.sendJSONError(res, 401, "Invalid or expired access token");
     } else {

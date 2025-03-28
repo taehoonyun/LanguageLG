@@ -7,94 +7,161 @@ const {
 const Character = require("../models/character");
 const { getCharacterByName } = require("../module/characterCache");
 
-let messageHistory = [
-  {
-    role: "system",
-    content: `You are a native English speaker from the U.S. helping a user practice English through casual roleplay based on locations (e.g., cafe, gym, restaurant).
+// Store active conversations for each user
+const activeConversations = new Map();
 
-The user will specify which tutor to talk to by saying:
-"Tutor: <name>"
+// Base system message for English practice
+const baseSystemMessage = {
+  role: "system",
+  content: `You are a native English speaker from the U.S. helping a user practice English through casual roleplay based on locations (e.g., cafe, gym, restaurant).
 
 Respond on behalf of the selected tutor. Keep your reply short (3–5 sentences max) and casual.
 
 ALWAYS respond strictly in this JSON format:
 {
-  "Response": "GPT’s reply based on the location and user input.",
+  "Response": "GPT's reply based on the location and user input.",
   "Error": "Correct any grammar mistakes and suggest a more natural or native-like way to say the same sentence, if needed."
 }`,
-  },
-];
+};
 
 exports.sendMessage = async (req, res) => {
-  const userMessage = req.body.params.messages;
+  const { userId, messages } = req.body;
 
-  if (!userMessage) {
-    return res.status(400).json({ error: "message is required" });
+  if (!messages) {
+    return mRes.sendJSONError(
+      res,
+      400,
+      "No active conversation found. Please select a character first."
+    );
   }
 
-  messageHistory.push({ role: "user", content: userMessage });
-  try {
-    const assistantMessage = await callOpenAIAPI(messageHistory);
+  // Get the active conversation for this user
+  const conversation = activeConversations.get(userId);
+  if (!conversation) {
+    return mRes.sendJSONError(res, 400, "message is required");
+  }
 
-    messageHistory.push({ role: "assistant", content: assistantMessage });
+  const {
+    personality,
+    messageHistory: userMessageHistory,
+    friendId,
+  } = conversation;
+
+  // Add the new message to the history
+  userMessageHistory.push({ role: "user", content: messages });
+
+  try {
+    const assistantMessage = await callOpenAIAPI(userMessageHistory);
+    userMessageHistory.push({ role: "assistant", content: assistantMessage });
+
+    // Update the conversation in activeConversations
+    activeConversations.set(userId, {
+      ...conversation,
+      messageHistory: userMessageHistory,
+    });
+
     mRes.sendJSON(res, 200, {
       result: true,
       data: JSON.parse(assistantMessage),
     });
   } catch (error) {
     console.error("Error calling ChatGPT:", error.message);
-    res.status(500).json({ error: "Failed to call ChatGPT API" });
+    mRes.sendJSONError(res, 500, "Failed to call ChatGPT API");
   }
 };
 
 exports.resetHistory = (req, res) => {
-  messageHistory = messageHistory.slice(0, 1); // system 메시지만 유지
+  const { userId } = req.body;
+  if (userId) {
+    activeConversations.delete(userId);
+  }
   mRes.sendJSON(res, 200, {
     result: true,
     data: "Chat history reset.",
   });
 };
+
+exports.quitChat = async (req, res) => {
+  const { userId } = req.body;
+
+  try {
+    const conversation = activeConversations.get(userId);
+    if (!conversation) {
+      return res.status(400).json({ error: "No active conversation found." });
+    }
+
+    const { messageHistory, friendId } = conversation;
+
+    // Create summary of the conversation
+    const summaryPrompt = [
+      {
+        role: "system",
+        content:
+          "Please summarize the following conversation in a way that ChatGPT 4 can understand well, keeping it simple but not missing key points.",
+      },
+      ...messageHistory,
+    ];
+
+    const summaryResult = await callOpenAIAPI(summaryPrompt);
+
+    // Save the summary to database
+    await saveConversationSummary(
+      userId,
+      friendId,
+      summaryResult.choices[0].message.content
+    );
+
+    // Remove the conversation from active conversations
+    activeConversations.delete(userId);
+
+    mRes.sendJSON(res, 200, {
+      result: true,
+      data: "Chat ended and summary saved.",
+    });
+  } catch (error) {
+    console.error("Error in quitChat:", error.message);
+    mRes.sendJSONError(res, 500, "Failed to end chat");
+  }
+};
+
 exports.talkToFriend = async (req, res) => {
   const { userId, friendId, messages } = req.body;
-  const personality = getCharacterByName(friendId); // 캐시에서 바로 가져옴
+  const personality = getCharacterByName(friendId); // Get directly from cache
+
   if (!personality) {
-    return res.status(400).json({ error: "Invalid friend name" });
+    return mRes.sendJSONError(res, 400, "Invalid friend name");
   }
 
   const lastSummary = await getLastSummary(userId, friendId);
-  const memoryContext = lastSummary[0]?.summary || "";
+  const memoryContext = lastSummary.length > 0 ? lastSummary[0].summary : "";
 
-  const promptMessages = [
+  // Create initial message history with base system message and character context
+  const initialMessageHistory = [
+    baseSystemMessage,
     {
       role: "system",
       content:
         personality.promptPrefix +
-        " 아래는 과거 대화 요약이다: " +
-        memoryContext,
+        (memoryContext
+          ? " Here is the summary of past conversations: " + memoryContext
+          : ""),
     },
     ...messages,
   ];
+  try {
+    const responseText = await callOpenAIAPI(initialMessageHistory);
+    initialMessageHistory.push({ role: "assistant", content: responseText });
 
-  const responseText = callOpenAIAPI(promptMessages);
+    // Store the conversation context for this user
+    activeConversations.set(userId, {
+      personality,
+      friendId,
+      messageHistory: initialMessageHistory,
+    });
 
-  // 간단 요약 생성 후 저장
-  const summaryPrompt = [
-    {
-      role: "system",
-      content:
-        "다음 대화를 간단하지만 키포인트를 놓지지 않고 chatGPT 4o가 잘 이해 할 수 있게게 요약해줘.",
-    },
-    ...messages,
-    { role: "assistant", content: responseText },
-  ];
-
-  const summaryResult = callOpenAIAPI(summaryPrompt);
-
-  await saveConversationSummary(
-    userId,
-    friendId,
-    summaryResult.choices[0].message.content
-  );
-
-  res.json({ reply: responseText });
+    res.json({ reply: responseText });
+  } catch (error) {
+    console.error("Error in talkToFriend:", error.message);
+    mRes.sendJSONError(res, 500, "Failed to start conversation");
+  }
 };

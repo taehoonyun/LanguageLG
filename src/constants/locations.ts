@@ -5,4 +5,6 @@ export const LOCATIONS = [
   "Building",
   "Room",
   "Time",
-] as const; 
+] as const;
+
+export type Location = typeof LOCATIONS[number]; 

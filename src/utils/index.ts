@@ -1,8 +1,8 @@
 // socketClient.ts
 import { io, Socket } from "socket.io-client";
 import OpenAI from "openai";
-import { getAIResponse } from "@/api";
-const userId = localStorage.getItem("userId");
+import { aiService } from "@/services/ai";
+
 /**
  * Creates and returns a Socket.IO client instance.
  * @param namespace - The namespace URL to connect to (default is "ws://example.com/my-namespace")
@@ -11,15 +11,32 @@ const userId = localStorage.getItem("userId");
 export const createSocket = (
   namespace: string = "http://localhost:5000"
 ): Socket => {
+  const token = localStorage.getItem("token");
+  const userId = localStorage.getItem("userId");
+
+  if (!token || !userId) {
+    throw new Error("Authentication required");
+  }
+
   const socket = io(namespace, {
     reconnectionDelayMax: 10000,
     auth: {
-      token: "123",
+      token,
     },
     query: {
       userId,
     },
   });
+
+  // Handle chat-related events
+  socket.on("chat:message", (data) => {
+    console.log("Received chat message:", data);
+  });
+
+  socket.on("chat:error", (error) => {
+    console.error("Chat error:", error);
+  });
+
   return socket;
 };
 
@@ -43,15 +60,4 @@ export class DeepSeekAPI {
 
     return response.json();
   }
-}
-
-export async function callAI(
-  messages: any,
-): Promise<any | null> {
-  const response = await getAIResponse(messages);
-  if (response.result) {
-    return response.data;
-  }
-  // const paddleX = parseFloat(response?.paddleX);
-  // return isNaN(paddleX) ? null : paddleX;
 }

@@ -1,39 +1,60 @@
 import axios from "axios";
-import config from "@/config";
-import { setupLogger } from "@/middleware/logger";
-import { handleApiError } from "@/middleware/error";
+import { API_ENDPOINTS } from './endpoints';
 
-export const client = axios.create({
-  baseURL: config.api.baseURL,
+export const apiClient = axios.create({
+  baseURL: 'http://localhost:5000/api',
   headers: {
     "Content-Type": "application/json",
-    "Admin-Version": config.api.adminVersion,
   },
+  withCredentials: true
 });
 
-// Setup logging middleware
-setupLogger(client);
-
-// Add request interceptor
-client.interceptors.request.use(
+// Request interceptor
+apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log("Making request to:", {
+      url: config.url,
+      method: config.method,
+      headers: config.headers,
+      data: config.data
+    });
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error("Request error:", error);
+    return Promise.reject(error);
+  }
 );
 
-// Add response interceptor
-client.interceptors.response.use(
-  (response) => response,
+// Response interceptor
+apiClient.interceptors.response.use(
+  (response) => {
+    console.log("Received response:", {
+      status: response.status,
+      data: response.data,
+      headers: response.headers
+    });
+    return response;
+  },
   (error) => {
+    console.error("Response error:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message,
+      config: error.config
+    });
+    
     if (error.response?.status === 401) {
+      // Clear token and redirect to login
       localStorage.removeItem("token");
+      localStorage.removeItem("user");
       window.location.href = "/login";
     }
-    return Promise.reject(handleApiError(error));
+    
+    return Promise.reject(error);
   }
-); 
+);
