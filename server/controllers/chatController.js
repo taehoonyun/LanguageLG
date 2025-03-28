@@ -28,22 +28,19 @@ exports.sendMessage = async (req, res) => {
   const { userId, message } = req.body;
 
   if (!message) {
-    return mRes.sendJSONError(
-      res,
-      400,
-      "Message is required"
-    );
+    return mRes.sendJSONError(res, 400, "Message is required");
   }
-
   // Get the active conversation for this user
   const conversation = activeConversations.get(userId);
   if (!conversation) {
-    return mRes.sendJSONError(res, 400, "No active conversation found. Please select a character first.");
+    return mRes.sendJSONError(
+      res,
+      400,
+      "No active conversation found. Please select a character first."
+    );
   }
 
-  const {
-    messageHistory: userMessageHistory,
-  } = conversation;
+  const { messageHistory: userMessageHistory } = conversation;
 
   // Add the new message to the history
   userMessageHistory.push({ role: "user", content: message });
@@ -58,10 +55,7 @@ exports.sendMessage = async (req, res) => {
       messageHistory: userMessageHistory,
     });
 
-    mRes.sendJSON(res, 200, {
-      result: true,
-      data: JSON.parse(assistantMessage),
-    });
+    mRes.sendJSON(res, 200, JSON.parse(assistantMessage));
   } catch (error) {
     console.error("Error calling ChatGPT:", error.message);
     mRes.sendJSONError(res, 500, "Failed to call ChatGPT API");
@@ -95,22 +89,44 @@ exports.quitChat = async (req, res) => {
       {
         role: "system",
         content:
-          "Please summarize the following conversation in a way that ChatGPT 4 can understand well, keeping it simple but not missing key points.",
+          `Please summarize the following chat between a user and an AI assistant in a format that is optimized for AI memory and contextual understanding.
+Focus on:
+- The user's intentions and questions
+- The assistant's answers and reasoning
+- Maintaining logical flow of the conversation
+- Structuring by roles if possible (e.g., [User]: ..., [AI]: ...)
+- Save only Responses and remove Errors
+
+Avoid unnecessary small talk or emotional expressions. The goal is to help another AI understand what was discussed and why.
+
+Format example:
+
+[User]: Asked how to get better at speaking English naturally.  
+[AI]: Suggested practicing with native-like phrases and listening to real conversations.  
+[User]: Said they're afraid of making mistakes.  
+[AI]: Encouraged them not to worry and reminded that making mistakes is part of learning.  
+[User]: Asked for a daily routine to improve.  
+[AI]: Shared a simple routine: 10 minutes of listening, 5 minutes of speaking, and 5 minutes of writing each day.
+
+Now, summarize this chat:
+---
+<Insert Chat Log Here>
+`,
       },
       ...messageHistory,
     ];
-
-    const summaryResult = await callOpenAIAPI(summaryPrompt);
+    const trimmedPrompt = summaryPrompt.filter((_, i) => i !== 1);
+    const summaryResult = await callOpenAIAPI(trimmedPrompt);
 
     // Save the summary to database
     await saveConversationSummary(
       userId,
       friendId,
-      summaryResult.choices[0].message.content
+      summaryResult
     );
 
     // Remove the conversation from active conversations
-    activeConversations.delete(userId);
+    // activeConversations.delete(userId);
 
     mRes.sendJSON(res, 200, {
       result: true,
@@ -124,7 +140,7 @@ exports.quitChat = async (req, res) => {
 
 exports.talkToFriend = async (req, res) => {
   const { userId, friendId, messages } = req.body;
-  
+
   const personality = getCharacterByName(friendId); // Get directly from cache
   if (!personality) {
     return mRes.sendJSONError(res, 400, "Invalid friend name");
@@ -156,12 +172,11 @@ exports.talkToFriend = async (req, res) => {
       friendId,
       messageHistory: initialMessageHistory,
     });
-    
+
     mRes.sendJSON(res, 200, {
       result: true,
       responseText,
     });
-
   } catch (error) {
     console.error("Error in talkToFriend:", error.message);
     mRes.sendJSONError(res, 500, "Failed to start conversation");

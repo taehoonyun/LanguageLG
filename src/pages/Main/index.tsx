@@ -12,9 +12,9 @@ interface Character {
   promptPrefix?: string;
 }
 
-interface ChatResponse {
-  response?: string;
-  error?: string;
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 const Main = () => {
@@ -24,9 +24,11 @@ const Main = () => {
   const [isLoadingCharacters, setIsLoadingCharacters] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [messageHistory, setMessageHistory] = useState<ChatMessage[]>([]);
   const { logout, token, user } = useAuth();
   const { response, isLoading, error, sendMessage, resetHistory, talkToFriend, quitChat } = useChat(user?.id || '');
-
+  
+  
   useEffect(() => {
     const fetchCharacters = async () => {
       if (!token) {
@@ -69,7 +71,19 @@ const Main = () => {
     if (!message.trim() || !selectedCharacter) return;
 
     try {
-      await sendMessage(message);
+      // Add user message to history
+      setMessageHistory(prev => [...prev, { role: 'user', content: message }]);
+      
+      const result = await sendMessage(message);
+      
+      // Add assistant response to history
+      if (result.result && result.data) {
+        setMessageHistory(prev => [...prev, { 
+          role: 'assistant', 
+          content: result.data.Response 
+        }]);
+      }
+      
       setMessage("");
     } catch (error) {
       setToastMessage("Failed to send message. Please try again.");
@@ -79,7 +93,9 @@ const Main = () => {
 
   const handleReset = async () => {
     try {
+      await resetHistory();
       setMessage("");
+      setMessageHistory([]); // Clear message history
     } catch (error) {
       setToastMessage("Failed to reset chat. Please try again.");
       setShowToast(true);
@@ -88,11 +104,11 @@ const Main = () => {
 
   const handleCharacterSelect = async (character: Character) => {
     try {
-      // Start a new conversation with the selected character
+      setMessageHistory([]); // Clear previous message history
       await talkToFriend(character.name, []);
+      // await resetHistory();
     } catch (error) {
       console.log(error);
-      
       setToastMessage("Failed to select character. Please try again.");
       setShowToast(true);
     }
@@ -201,17 +217,18 @@ const Main = () => {
 
         <div className="w-100 mb-4 p-3 rounded bg-dark bg-opacity-25 border border-light overflow-auto custom-scrollbar" 
              style={{ minHeight: "300px", maxHeight: "500px" }}>
-          {response?.Response && (
-            <div className="d-flex mb-3">
-              <div className="bg-dark bg-opacity-25 text-white p-3 rounded-3" style={{ maxWidth: "80%" }}>
-                {response.Response}
+          {messageHistory.map((msg, index) => (
+            <div key={index} className={`d-flex mb-3 ${msg.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}>
+              <div className={`p-3 rounded-3 ${msg.role === 'user' ? 'bg-primary bg-opacity-25 text-white' : 'bg-dark bg-opacity-25 text-white'}`} 
+                   style={{ maxWidth: "80%" }}>
+                {msg.content}
               </div>
             </div>
-          )}
-          {response?.Error && (
+          ))}
+          {error && (
             <div className="d-flex mb-3 justify-content-end">
               <div className="bg-danger bg-opacity-10 text-danger p-3 rounded-3" style={{ maxWidth: "80%" }}>
-                {response.Error}
+                {error}
               </div>
             </div>
           )}

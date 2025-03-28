@@ -11,9 +11,8 @@ const callOpenAIAPI = async (messages) => {
       max_tokens: 150,
       messages,
     });
-
-
-    return completion?.choices[0].message.content;
+    
+    return completion?.choices[0].message.content || [];
   } catch (error) {
     console.error(
       "Error:",

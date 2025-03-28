@@ -34,8 +34,10 @@ export const useChat = (userId: string) => {
       const result = await aiService.sendMessage({ message, userId });
       if (result.result) {
         setResponse(result.data);
+        return result;
       } else {
         setError(result.data.Error);
+        return result;
       }
     } catch (error) {
       setError("Failed to send message");
