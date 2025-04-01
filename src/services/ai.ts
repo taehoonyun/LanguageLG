@@ -17,6 +17,7 @@ export interface TalkToFriendParams {
   userId: string;
   friendId: string;
   messages: any[];
+  location?: string;
 }
 
 export const aiService = {
@@ -30,11 +31,12 @@ export const aiService = {
     return response.data;
   },
 
-  talkToFriend: async ({ userId, friendId, messages }: TalkToFriendParams): Promise<ApiResponse<ChatResponse>> => {
+  talkToFriend: async ({ userId, friendId, messages, location }: TalkToFriendParams): Promise<ApiResponse<ChatResponse>> => {
     const response = await apiClient.post<ApiResponse<ChatResponse>>(API_ENDPOINTS.CHAT.TALK_TO_FRIEND, {
       userId,
       friendId,
       messages,
+      location
     });
     return response.data;
   },

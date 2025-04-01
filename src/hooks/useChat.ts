@@ -7,12 +7,12 @@ export const useChat = (userId: string) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const talkToFriend = async (friendId: string, messages: any[]) => {
+  const talkToFriend = async (friendId: string, messages: any[], location?: string) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const result = await aiService.talkToFriend({ userId, friendId, messages });
+      const result = await aiService.talkToFriend({ userId, friendId, messages, location });
       if (result.result) {
         setResponse(result.data);
       } else {

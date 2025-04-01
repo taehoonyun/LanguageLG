@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Container, Button, Form, Card, Toast } from "react-bootstrap";
+import { Container, Button, Form, Card, Toast, Dropdown } from "react-bootstrap";
 import { useChat } from "@/hooks/useChat";
 import { useAuth } from "@/hooks/useAuth";
 import { aiService } from "@/services/ai";
@@ -17,10 +17,24 @@ interface ChatMessage {
   content: string;
 }
 
+const LOCATIONS = [
+  "Cafe",
+  "Restaurant",
+  "Gym",
+  "Park",
+  "Shopping Mall",
+  "Library",
+  "Movie Theater",
+  "Beach",
+  "Museum",
+  "Coffee Shop"
+];
+
 const Main = () => {
   const [message, setMessage] = useState("");
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [isLoadingCharacters, setIsLoadingCharacters] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -66,13 +80,21 @@ const Main = () => {
     fetchCharacters();
   }, [token]);
 
+  const handleLocationSelect = (location: string) => {
+    setSelectedLocation(location);
+    setMessageHistory([]); // Clear message history when location changes
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || !selectedCharacter) return;
+    if (!message.trim() || !selectedCharacter || !selectedLocation) return;
 
     try {
-      // Add user message to history
-      setMessageHistory(prev => [...prev, { role: 'user', content: message }]);
+      // Add user message to history with location context
+      setMessageHistory(prev => [...prev, { 
+        role: 'user', 
+        content: `${message}` 
+      }]);
       
       const result = await sendMessage(message);
       
@@ -105,8 +127,10 @@ const Main = () => {
   const handleCharacterSelect = async (character: Character) => {
     try {
       setMessageHistory([]); // Clear previous message history
-      await talkToFriend(character.name, []);
-      // await resetHistory();
+      setSelectedCharacter(character); // Set the selected character
+      if (selectedLocation) {
+        await talkToFriend(character.name, [], selectedLocation);
+      }
     } catch (error) {
       console.log(error);
       setToastMessage("Failed to select character. Please try again.");
@@ -215,6 +239,26 @@ const Main = () => {
           </div>
         )}
 
+        <div className="w-100 mb-4">
+          <h3 className="text-white mb-3">Select a Location</h3>
+          <div className="d-flex gap-3 overflow-auto pb-3 custom-scrollbar" style={styles.characterList}>
+            {LOCATIONS.map((location) => (
+              <Card
+                key={location}
+                className={`flex-shrink-0 ${selectedLocation === location ? 'border-light' : ''}`}
+                style={styles.characterCard}
+                onClick={() => handleLocationSelect(location)}
+              >
+                <Card.Body className="p-2">
+                  <Card.Title className="text-center mb-0 text-white">
+                    {location}
+                  </Card.Title>
+                </Card.Body>
+              </Card>
+            ))}
+          </div>
+        </div>
+
         <div className="w-100 mb-4 p-3 rounded bg-dark bg-opacity-25 border border-light overflow-auto custom-scrollbar" 
              style={{ minHeight: "300px", maxHeight: "500px" }}>
           {messageHistory.map((msg, index) => (
@@ -241,14 +285,16 @@ const Main = () => {
                 type="text"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder={selectedCharacter ? `Chat with ${selectedCharacter.name}...` : "Select a character to start chatting"}
-                disabled={isLoading || !selectedCharacter}
+                placeholder={selectedCharacter && selectedLocation 
+                  ? `Chat with ${selectedCharacter.name} at ${selectedLocation}...` 
+                  : "Select a character and location to start chatting"}
+                disabled={isLoading || !selectedCharacter || !selectedLocation}
                 className="bg-dark bg-opacity-25 text-white border-light"
               />
               <Button 
                 type="submit" 
                 variant="outline-light"
-                disabled={isLoading || !message.trim() || !selectedCharacter}
+                disabled={isLoading || !message.trim() || !selectedCharacter || !selectedLocation}
               >
                 {isLoading ? "Sending..." : "Send"}
               </Button>

@@ -13,13 +13,15 @@ const activeConversations = new Map();
 // Base system message for English practice
 const baseSystemMessage = {
   role: "system",
-  content: `You are a native English speaker from the U.S. helping a user practice English through casual roleplay based on locations (e.g., cafe, gym, restaurant).
+  content: `You are just a chill American friend casually chatting with the user in English. You're hanging out at places like a cafe, gym, or restaurant. 
+Be laid-back and friendly. Don't sound like a teacher or tutor. 
+Just chat like a real friend would and show your opinion.
 
 Respond on behalf of the selected tutor. Keep your reply short (3–5 sentences max) and casual.
 
 ALWAYS respond strictly in this JSON format:
 {
-  "Response": "GPT's reply based on the location and user input.",
+  "Response": "GPT's reply.",
   "Error": "Correct any grammar mistakes and suggest a more natural or native-like way to say the same sentence, if needed."
 }`,
 };
@@ -139,7 +141,7 @@ Now, summarize this chat:
 };
 
 exports.talkToFriend = async (req, res) => {
-  const { userId, friendId, messages } = req.body;
+  const { userId, friendId, messages, location } = req.body;
 
   const personality = getCharacterByName(friendId); // Get directly from cache
   if (!personality) {
@@ -156,6 +158,7 @@ exports.talkToFriend = async (req, res) => {
       role: "system",
       content:
         personality.promptPrefix +
+        (location ? ` You are at ${location}. ` : "") +
         (memoryContext
           ? " Here is the summary of past conversations: " + memoryContext
           : ""),
@@ -171,6 +174,7 @@ exports.talkToFriend = async (req, res) => {
       personality,
       friendId,
       messageHistory: initialMessageHistory,
+      location: location || null
     });
 
     mRes.sendJSON(res, 200, {
