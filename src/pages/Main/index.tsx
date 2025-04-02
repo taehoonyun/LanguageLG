@@ -269,6 +269,13 @@ const Main = () => {
               </div>
             </div>
           ))}
+          {isLoading && (
+            <div className="d-flex mb-3 justify-content-start">
+              <div className="bg-dark bg-opacity-25 text-white p-3 rounded-3" style={{ maxWidth: "80%" }}>
+                ...
+              </div>
+            </div>
+          )}
           {error && (
             <div className="d-flex mb-3 justify-content-end">
               <div className="bg-danger bg-opacity-10 text-danger p-3 rounded-3" style={{ maxWidth: "80%" }}>

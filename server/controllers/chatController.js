@@ -13,17 +13,34 @@ const activeConversations = new Map();
 // Base system message for English practice
 const baseSystemMessage = {
   role: "system",
-  content: `You are just a chill American friend casually chatting with the user in English. You're hanging out at places like a cafe, gym, or restaurant. 
-Be laid-back and friendly. Don't sound like a teacher or tutor. 
+  content: `You are just a friend casually chatting with the user in English. Don't sound like a teacher or tutor. 
 Just chat like a real friend would and show your opinion.
 
-Respond on behalf of the selected tutor. Keep your reply short (3–5 sentences max) and casual.
+Keep your reply short (3–5 sentences max) and casual.
 
 ALWAYS respond strictly in this JSON format:
 {
   "Response": "GPT's reply.",
   "Error": "Correct any grammar mistakes and suggest a more natural or native-like way to say the same sentence, if needed."
 }`,
+};
+
+const summaryPromptTemplate = {
+  role: "system",
+  content: `Summarize what the user has told you so far in 3–5 short bullet points. 
+Only include key facts, habits, preferences, or repeated topics they’ve mentioned.
+Avoid full sentences. Use simple, memory-style phrases like:
+- Likes spicy ramen
+- Works late shifts
+- Goes to the gym at night
+Now, summarize this chat:
+---
+<Insert Chat Log Here>
+`
+};
+
+const shouldSummarize = (chatHistory) => {
+  return chatHistory.length >= 7; 
 };
 
 exports.sendMessage = async (req, res) => {
@@ -42,7 +59,7 @@ exports.sendMessage = async (req, res) => {
     );
   }
 
-  const { messageHistory: userMessageHistory } = conversation;
+  const { messageHistory: userMessageHistory, friendId } = conversation;
 
   // Add the new message to the history
   userMessageHistory.push({ role: "user", content: message });
@@ -56,6 +73,44 @@ exports.sendMessage = async (req, res) => {
       ...conversation,
       messageHistory: userMessageHistory,
     });
+
+    // Check if we should summarize the conversation
+    console.log(userMessageHistory);
+    
+    if (shouldSummarize(userMessageHistory)) {
+      try {
+        // Create summary of the conversation
+        const summaryPrompt = [
+          summaryPromptTemplate,
+          ...userMessageHistory,
+        ];
+        const trimmedPrompt = summaryPrompt.filter((_, i) => i !== 1);
+        const summaryResult = await callOpenAIAPI(trimmedPrompt);
+
+        // Save the summary to database
+        await saveConversationSummary(
+          userId,
+          friendId,
+          summaryResult
+        );
+
+        // Clear the message history after saving summary
+        activeConversations.set(userId, {
+          ...conversation,
+          messageHistory: [
+            baseSystemMessage,
+            {
+              role: "system",
+              content: conversation.personality.promptPrefix + 
+                (conversation.location ? ` You are at ${conversation.location}. ` : "") +
+                " Here is the summary of past conversations: " + summaryResult,
+            },
+          ],
+        });
+      } catch (error) {
+        console.error("Error saving conversation summary:", error);
+      }
+    }
 
     mRes.sendJSON(res, 200, JSON.parse(assistantMessage));
   } catch (error) {
@@ -88,33 +143,7 @@ exports.quitChat = async (req, res) => {
 
     // Create summary of the conversation
     const summaryPrompt = [
-      {
-        role: "system",
-        content:
-          `Please summarize the following chat between a user and an AI assistant in a format that is optimized for AI memory and contextual understanding.
-Focus on:
-- The user's intentions and questions
-- The assistant's answers and reasoning
-- Maintaining logical flow of the conversation
-- Structuring by roles if possible (e.g., [User]: ..., [AI]: ...)
-- Save only Responses and remove Errors
-
-Avoid unnecessary small talk or emotional expressions. The goal is to help another AI understand what was discussed and why.
-
-Format example:
-
-[User]: Asked how to get better at speaking English naturally.  
-[AI]: Suggested practicing with native-like phrases and listening to real conversations.  
-[User]: Said they're afraid of making mistakes.  
-[AI]: Encouraged them not to worry and reminded that making mistakes is part of learning.  
-[User]: Asked for a daily routine to improve.  
-[AI]: Shared a simple routine: 10 minutes of listening, 5 minutes of speaking, and 5 minutes of writing each day.
-
-Now, summarize this chat:
----
-<Insert Chat Log Here>
-`,
-      },
+      summaryPromptTemplate,
       ...messageHistory,
     ];
     const trimmedPrompt = summaryPrompt.filter((_, i) => i !== 1);
