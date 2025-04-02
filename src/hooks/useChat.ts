@@ -15,8 +15,10 @@ export const useChat = (userId: string) => {
       const result = await aiService.talkToFriend({ userId, friendId, messages, location });
       if (result.result) {
         setResponse(result.data);
+        return result;
       } else {
         setError(result.data.Error);
+        return result;
       }
     } catch (error) {
       setError("Failed to start conversation");

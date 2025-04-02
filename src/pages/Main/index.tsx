@@ -129,7 +129,14 @@ const Main = () => {
       setMessageHistory([]); // Clear previous message history
       setSelectedCharacter(character); // Set the selected character
       if (selectedLocation) {
-        await talkToFriend(character.name, [], selectedLocation);
+        const result = await talkToFriend(character.name, [], selectedLocation);
+           // Add assistant response to history
+      if (result.result && result.data) {
+        setMessageHistory(prev => [...prev, { 
+          role: 'assistant', 
+          content: result.data.Response 
+        }]);
+      }
       }
     } catch (error) {
       console.log(error);
