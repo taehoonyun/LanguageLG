@@ -18,6 +18,16 @@ const allowedOrigins = process.env.CLIENT_ORIGIN?.split(',') || [];
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
+app.options('*', cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Blocked by CORS'));
+    }
+  },
+  credentials: true
+}));
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
