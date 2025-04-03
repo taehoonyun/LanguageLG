@@ -13,15 +13,23 @@ const api = require("./routes/api");
 const app = express();
 const server = http.createServer(app);
 const port = process.env.PORT || 5000;
+const allowedOrigins = process.env.CLIENT_ORIGIN?.split(',') || [];
 
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: process.env.REACT_APP_API_BASE_URL,
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn("CORS BLOCKED:", origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'admin-version']
+  allowedHeaders: ['Content-Type', 'Authorization', 'admin-version'],
 }));
 
 // API Routes
