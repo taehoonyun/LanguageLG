@@ -35,8 +35,8 @@
     "web-vitals": "^2.1.0"
   },
   "scripts": {
-    "start": "craco start",
-    "build": "npx craco build",
+    "start": "yarn craco start",
+    "build": "yarn craco build",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
