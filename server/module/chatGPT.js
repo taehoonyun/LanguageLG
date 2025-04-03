@@ -2,7 +2,7 @@ const { OpenAI } = require("openai");
 const callOpenAIAPI = async (messages) => {
   try {
     const openai = new OpenAI({
-      apiKey: process.env.REACT_APP_OPENAPI,
+      apiKey: process.env.CLIENT_OPENAPI,
     });
 
     const completion = await openai.chat.completions.create({
