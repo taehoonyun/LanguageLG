@@ -1,8 +1,10 @@
 import axios from "axios";
+import config from '../config';
+
 import { API_ENDPOINTS } from './endpoints';
 
 export const apiClient = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: config.api.baseURL,
   headers: {
     "Content-Type": "application/json",
   },
