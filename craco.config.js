@@ -1,4 +1,5 @@
 const path = require('path');
+const isDev = process.env.NODE_ENV !== 'production';
 module.exports = {
     devServer: {
         port: 3000,
@@ -28,4 +29,9 @@ module.exports = {
     typescript: {
         enableTypeChecking: true /* (default value) */,
     },
+    ...(isDev && {
+        babel: {
+          plugins: ['react-refresh/babel'],
+        },
+      }),
 };
