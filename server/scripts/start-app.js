@@ -29,7 +29,7 @@ const run = (command, args, options = {}) => {
 const runApp = () => {
   if (isProduction) {
     console.log("🚀 Starting server in production mode...");
-    run("node", [path.join(__dirname, "../server/server.js")]);
+    run("node", [path.join(__dirname, "../server.js")]);
   } else {
     console.log("🧪 Starting client in development mode...");
     run("yarn", ["craco", "start"]);
