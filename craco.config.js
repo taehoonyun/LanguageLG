@@ -1,5 +1,4 @@
 const path = require('path');
-const isDev = process.env.NODE_ENV !== 'production';
 
 module.exports = {
     devServer: {
@@ -29,8 +28,5 @@ module.exports = {
     },
     typescript: {
         enableTypeChecking: true /* (default value) */,
-    },
-    babel: {
-        plugins: isDev ? [['react-refresh/babel', {}, 'unique-name']] : [],
     },
 };
