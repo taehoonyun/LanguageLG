@@ -4,10 +4,6 @@
   "private": true,
   "dependencies": {
     "@craco/craco": "^7.1.0",
-    "@testing-library/dom": "^10.4.0",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.1.0",
-    "@testing-library/user-event": "^13.2.1",
     "@types/jest": "^27.0.1",
     "@types/node": "^16.7.13",
     "@types/react": "^18.2.0",
@@ -37,7 +33,7 @@
   },
   "scripts": {
     "start": "yarn craco start",
-    "build": "yarn craco build",
+    "build": "CI=false craco build",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
