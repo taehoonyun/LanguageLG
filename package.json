@@ -31,8 +31,9 @@
     "react-scripts": "5.0.1",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
-    "typescript": "^5.3.3",
-    "web-vitals": "^2.1.0"
+    "typescript": "^4.9.5",
+    "web-vitals": "^2.1.0",
+    "yarn": "^1.22.22"
   },
   "scripts": {
     "start": "yarn craco start",
