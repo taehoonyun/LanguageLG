@@ -32,7 +32,7 @@
     "yarn": "^1.22.22"
   },
   "scripts": {
-    "start": "yarn craco start",
+    "start": "node server/scripts/start-app.js",
     "build": "CI=false craco build",
     "test": "jest",
     "test:watch": "jest --watch",
