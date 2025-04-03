@@ -1,7 +1,6 @@
 // socketClient.ts
 import { io, Socket } from "socket.io-client";
-import OpenAI from "openai";
-import { aiService } from "@/services/ai";
+import config from '../config';
 
 /**
  * Creates and returns a Socket.IO client instance.
@@ -9,7 +8,7 @@ import { aiService } from "@/services/ai";
  * @returns The Socket.IO client instance.
  */
 export const createSocket = (
-  namespace: string = "http://localhost:5000"
+  namespace: string = config.api.baseURL
 ): Socket => {
   const token = localStorage.getItem("token");
   const userId = localStorage.getItem("userId");
