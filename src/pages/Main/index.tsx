@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { Container, Button, Form, Card, Toast, Dropdown } from "react-bootstrap";
+import {
+  Container,
+  Button,
+  Form,
+  Card,
+  Toast,
+  Dropdown,
+} from "react-bootstrap";
 import { useChat } from "@/hooks/useChat";
 import { useAuth } from "@/hooks/useAuth";
 import { aiService } from "@/services/ai";
@@ -13,7 +20,7 @@ interface Character {
 }
 
 interface ChatMessage {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -27,32 +34,41 @@ const LOCATIONS = [
   "Movie Theater",
   "Beach",
   "Museum",
-  "Coffee Shop"
+  "Coffee Shop",
 ];
 
 const Main = () => {
   const [message, setMessage] = useState("");
   const [characters, setCharacters] = useState<Character[]>([]);
-  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(
+    null
+  );
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [isLoadingCharacters, setIsLoadingCharacters] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [messageHistory, setMessageHistory] = useState<ChatMessage[]>([]);
   const { logout, token, user } = useAuth();
-  const { response, isLoading, error, sendMessage, resetHistory, talkToFriend, quitChat } = useChat(user?.id || '');
-  
-  
+  const {
+    response,
+    isLoading,
+    error,
+    sendMessage,
+    resetHistory,
+    talkToFriend,
+    quitChat,
+  } = useChat(user?.id || "");
+
   useEffect(() => {
     const fetchCharacters = async () => {
       if (!token) {
         setIsLoadingCharacters(false);
         return;
       }
-      
+
       try {
         const { result, data: names } = await aiService.getCharacterNames();
-        
+
         if (!result || !names) {
           setToastMessage("Failed to fetch characters");
           setShowToast(true);
@@ -61,14 +77,10 @@ const Main = () => {
 
         const characterList = names.map((name: string) => ({
           name,
-          description: `Chat with ${name}`
+          description: `Chat with ${name}`,
         }));
-        
+
         setCharacters(characterList);
-        if (characterList.length > 0) {
-          const randomIndex = Math.floor(Math.random() * characterList.length);
-          setSelectedCharacter(characterList[randomIndex]);
-        }
       } catch (error) {
         setToastMessage("Failed to fetch characters. Please try again.");
         setShowToast(true);
@@ -82,6 +94,7 @@ const Main = () => {
 
   const handleLocationSelect = (location: string) => {
     setSelectedLocation(location);
+    setSelectedCharacter(null); // Reset character selection when location changes
     setMessageHistory([]); // Clear message history when location changes
   };
 
@@ -91,21 +104,27 @@ const Main = () => {
 
     try {
       // Add user message to history with location context
-      setMessageHistory(prev => [...prev, { 
-        role: 'user', 
-        content: `${message}` 
-      }]);
-      
+      setMessageHistory((prev) => [
+        ...prev,
+        {
+          role: "user",
+          content: `${message}`,
+        },
+      ]);
+
       const result = await sendMessage(message);
-      
+
       // Add assistant response to history
       if (result.result && result.data) {
-        setMessageHistory(prev => [...prev, { 
-          role: 'assistant', 
-          content: result.data.Response 
-        }]);
+        setMessageHistory((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: result.data.Response,
+          },
+        ]);
       }
-      
+
       setMessage("");
     } catch (error) {
       setToastMessage("Failed to send message. Please try again.");
@@ -125,18 +144,25 @@ const Main = () => {
   };
 
   const handleCharacterSelect = async (character: Character) => {
+    if (!selectedLocation) {
+      setToastMessage("Please select a location first");
+      setShowToast(true);
+      return;
+    }
+
     try {
       setMessageHistory([]); // Clear previous message history
       setSelectedCharacter(character); // Set the selected character
-      if (selectedLocation) {
-        const result = await talkToFriend(character.name, [], selectedLocation);
-           // Add assistant response to history
+      const result = await talkToFriend(character.name, [], selectedLocation);
+      // Add assistant response to history
       if (result.result && result.data) {
-        setMessageHistory(prev => [...prev, { 
-          role: 'assistant', 
-          content: result.data.Response 
-        }]);
-      }
+        setMessageHistory((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: result.data.Response,
+          },
+        ]);
       }
     } catch (error) {
       console.log(error);
@@ -147,7 +173,7 @@ const Main = () => {
 
   const handleQuit = async () => {
     if (!selectedCharacter) return;
-    
+
     try {
       await quitChat();
       setSelectedCharacter(null);
@@ -172,10 +198,10 @@ const Main = () => {
 
   return (
     <Container className="py-5" style={styles.container}>
-      <Toast 
-        show={showToast} 
-        onClose={() => setShowToast(false)} 
-        delay={3000} 
+      <Toast
+        show={showToast}
+        onClose={() => setShowToast(false)}
+        delay={3000}
         autohide
         className="position-fixed top-0 end-0 m-3"
       >
@@ -189,25 +215,25 @@ const Main = () => {
         <h1 className="text-white">Character Chat</h1>
         <div>
           {selectedCharacter && (
-            <Button 
-              variant="outline-danger" 
-              onClick={handleQuit} 
+            <Button
+              variant="outline-danger"
+              onClick={handleQuit}
               className="me-2"
               style={styles.button}
             >
               Quit Chat
             </Button>
           )}
-          <Button 
-            variant="outline-light" 
-            onClick={handleReset} 
+          <Button
+            variant="outline-light"
+            onClick={handleReset}
             className="me-2"
             style={styles.button}
           >
             Reset Chat
           </Button>
-          <Button 
-            variant="outline-light" 
+          <Button
+            variant="outline-light"
             onClick={logout}
             style={styles.button}
           >
@@ -217,36 +243,7 @@ const Main = () => {
       </div>
 
       <div className="d-flex flex-column align-items-center">
-        <div className="w-100 mb-4">
-          <h3 className="text-white mb-3">Select a Character</h3>
-          <div className="d-flex gap-3 overflow-auto pb-3 custom-scrollbar" style={styles.characterList}>
-            {characters.map((character) => (
-              <Card
-                key={character.name}
-                className={`flex-shrink-0 ${selectedCharacter?.name === character.name ? 'border-light' : ''}`}
-                style={styles.characterCard}
-                onClick={() => handleCharacterSelect(character)}
-              >
-                <Card.Body className="p-2">
-                  <Card.Title className="text-center mb-0 text-white">
-                    {character.name}
-                  </Card.Title>
-                </Card.Body>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {selectedCharacter && (
-          <div className="text-center mb-4 p-4 rounded bg-dark bg-opacity-25 border border-light">
-            <h2 className="text-white">{selectedCharacter.name}</h2>
-            <p className="text-white-50 mb-0">
-              {selectedCharacter.description}
-            </p>
-          </div>
-        )}
-
-        <div className="w-100 mb-4">
+      <div className="w-100 mb-4">
           <h3 className="text-white mb-3">Select a Location</h3>
           <div className="d-flex gap-3 overflow-auto pb-3 custom-scrollbar" style={styles.characterList}>
             {LOCATIONS.map((location) => (
@@ -265,27 +262,83 @@ const Main = () => {
             ))}
           </div>
         </div>
+   
+        {selectedCharacter && (
+          <div className="text-center mb-4 p-4 rounded bg-dark bg-opacity-25 border border-light">
+            <h2 className="text-white">{selectedCharacter.name}</h2>
+            <p className="text-white-50 mb-0">
+              {selectedCharacter.description}
+            </p>
+          </div>
+        )}
+        <div className="w-100 mb-4">
+          <h3 className="text-white mb-3">Select a Character</h3>
+          <div
+            className="d-flex gap-3 overflow-auto pb-3 custom-scrollbar"
+            style={styles.characterList}
+          >
+            {characters.map((character) => (
+              <Card
+                key={character.name}
+                className={`flex-shrink-0 ${
+                  selectedCharacter?.name === character.name
+                    ? "border-light"
+                    : ""
+                }`}
+                style={styles.characterCard}
+                onClick={() => handleCharacterSelect(character)}
+              >
+                <Card.Body className="p-2">
+                  <Card.Title className="text-center mb-0 text-white">
+                    {character.name}
+                  </Card.Title>
+                </Card.Body>
+              </Card>
+            ))}
+          </div>
+        </div>
 
-        <div className="w-100 mb-4 p-3 rounded bg-dark bg-opacity-25 border border-light overflow-auto custom-scrollbar" 
-             style={{ minHeight: "300px", maxHeight: "500px" }}>
+        <div
+          className="w-100 mb-4 p-3 rounded bg-dark bg-opacity-25 border border-light overflow-auto custom-scrollbar"
+          style={{ minHeight: "300px", maxHeight: "500px" }}
+        >
           {messageHistory.map((msg, index) => (
-            <div key={index} className={`d-flex mb-3 ${msg.role === 'user' ? 'justify-content-end' : 'justify-content-start'}`}>
-              <div className={`p-3 rounded-3 ${msg.role === 'user' ? 'bg-primary bg-opacity-25 text-white' : 'bg-dark bg-opacity-25 text-white'}`} 
-                   style={{ maxWidth: "80%" }}>
+            <div
+              key={index}
+              className={`d-flex mb-3 ${
+                msg.role === "user"
+                  ? "justify-content-end"
+                  : "justify-content-start"
+              }`}
+            >
+              <div
+                className={`p-3 rounded-3 ${
+                  msg.role === "user"
+                    ? "bg-primary bg-opacity-25 text-white"
+                    : "bg-dark bg-opacity-25 text-white"
+                }`}
+                style={{ maxWidth: "80%" }}
+              >
                 {msg.content}
               </div>
             </div>
           ))}
           {isLoading && (
             <div className="d-flex mb-3 justify-content-start">
-              <div className="bg-dark bg-opacity-25 text-white p-3 rounded-3" style={{ maxWidth: "80%" }}>
+              <div
+                className="bg-dark bg-opacity-25 text-white p-3 rounded-3"
+                style={{ maxWidth: "80%" }}
+              >
                 ...
               </div>
             </div>
           )}
           {error && (
             <div className="d-flex mb-3 justify-content-end">
-              <div className="bg-danger bg-opacity-10 text-danger p-3 rounded-3" style={{ maxWidth: "80%" }}>
+              <div
+                className="bg-danger bg-opacity-10 text-danger p-3 rounded-3"
+                style={{ maxWidth: "80%" }}
+              >
                 {error}
               </div>
             </div>
@@ -299,16 +352,23 @@ const Main = () => {
                 type="text"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder={selectedCharacter && selectedLocation 
-                  ? `Chat with ${selectedCharacter.name} at ${selectedLocation}...` 
-                  : "Select a character and location to start chatting"}
+                placeholder={
+                  selectedCharacter && selectedLocation
+                    ? `Chat with ${selectedCharacter.name} at ${selectedLocation}...`
+                    : "Select a character and location to start chatting"
+                }
                 disabled={isLoading || !selectedCharacter || !selectedLocation}
                 className="bg-dark bg-opacity-25 text-white border-light"
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 variant="outline-light"
-                disabled={isLoading || !message.trim() || !selectedCharacter || !selectedLocation}
+                disabled={
+                  isLoading ||
+                  !message.trim() ||
+                  !selectedCharacter ||
+                  !selectedLocation
+                }
               >
                 {isLoading ? "Sending..." : "Send"}
               </Button>
